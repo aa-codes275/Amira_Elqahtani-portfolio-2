@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex,nofollow" />
+<title>لوحة الإدارة — خاص</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<style>
+  body{background:var(--paper)}
+  .admin{max-width:1000px;margin:0 auto;padding:40px 22px}
+  .lock{max-width:380px;margin:14vh auto;background:#fff;border:1px solid var(--line);border-radius:18px;padding:30px;box-shadow:var(--shadow);text-align:center}
+  .lock input{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;margin:14px 0;font-family:inherit;text-align:center}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  th,td{padding:12px 14px;text-align:right;font-size:.9rem;border-bottom:1px solid var(--line)}
+  th{background:var(--burgundy);color:#fff}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center;margin-bottom:22px}
+  .hidden{display:none}
+  .cards-admin{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:26px}
+  .box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center}
+  .box b{display:block;font-size:1.7rem;color:var(--burgundy)}
+</style>
+</head>
+<body>
+
+<div class="lock" id="lock">
+  <h2>لوحة الإدارة</h2>
+  <p class="tiny">صفحة خاصة — غير مرتبطة بالموقع.</p>
+  <input type="password" id="pass" placeholder="كلمة المرور" />
+  <button class="btn btn-primary" id="loginBtn">دخول</button>
+  <p class="form-note" id="err"></p>
+</div>
+
+<div class="admin hidden" id="panel">
+  <div class="bar">
+    <h2 style="margin:0">طلبات العملاء</h2>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" id="exportBtn">تصدير CSV</button>
+      <button class="btn btn-ghost" id="clearBtn">حذف الكل</button>
+      <button class="btn btn-primary" id="outBtn">خروج</button>
+    </div>
+  </div>
+  <div class="cards-admin">
+    <div class="box"><b id="cTotal">0</b><span class="tiny">إجمالي الطلبات</span></div>
+    <div class="box"><b id="cToday">0</b><span class="tiny">طلبات اليوم</span></div>
+    <div class="box"><b>4</b><span class="tiny">كيانات تجارية</span></div>
+  </div>
+  <table>
+    <thead><tr><th>الاسم</th><th>التواصل</th><th>الخدمة</th><th>الرسالة</th><th>التاريخ</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <p class="tiny" style="margin-top:16px">كلمة المرور الافتراضية: <b>amira2026</b> — يمكن تغييرها من داخل هذا الملف (المتغير PASSWORD).</p>
+</div>
+
+<script>
+const PASSWORD = "amira2026";
+const KEY = "amira_leads";
+const lock = document.getElementById("lock"), panel = document.getElementById("panel");
+
+function open_() {
+  lock.classList.add("hidden"); panel.classList.remove("hidden"); render();
+}
+document.getElementById("loginBtn").onclick = () => {
+  if (document.getElementById("pass").value === PASSWORD) {
+    sessionStorage.setItem("amira_admin", "1"); open_();
+  } else document.getElementById("err").textContent = "كلمة المرور غير صحيحة";
+};
+document.getElementById("pass").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginBtn").click(); });
+document.getElementById("outBtn").onclick = () => { sessionStorage.removeItem("amira_admin"); location.reload(); };
+if (sessionStorage.getItem("amira_admin")) open_();
+
+function list(){ return JSON.parse(localStorage.getItem(KEY) || "[]"); }
+
+function render() {
+  const data = list();
+  const rows = document.getElementById("rows");
+  rows.innerHTML = data.length ? "" : '<tr><td colspan="5">لا توجد طلبات بعد.</td></tr>';
+  data.forEach(d => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${d.name||""}</td><td>${d.contact||""}</td><td>${d.service||""}</td><td>${d.message||""}</td><td>${new Date(d.date).toLocaleString("ar-EG")}</td>`;
+    rows.appendChild(tr);
+  });
+  document.getElementById("cTotal").textContent = data.length;
+  const today = new Date().toDateString();
+  document.getElementById("cToday").textContent = data.filter(d => new Date(d.date).toDateString() === today).length;
+}
+
+document.getElementById("clearBtn").onclick = () => { if (confirm("حذف كل الطلبات؟")) { localStorage.removeItem(KEY); render(); } };
+document.getElementById("exportBtn").onclick = () => {
+  const data = list();
+  if (!data.length) return alert("لا توجد بيانات");
+  const csv = "\uFEFF" + ["الاسم,التواصل,الخدمة,الرسالة,التاريخ"]
+    .concat(data.map(d => [d.name, d.contact, d.service, (d.message||"").replace(/[,\n]/g," "), d.date].join(","))).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "amira-leads.csv"; a.click();
+};
+</script>
+</body>
+</html>
